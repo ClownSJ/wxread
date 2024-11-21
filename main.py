@@ -7,6 +7,7 @@ import urllib.parse
 import random
 from push import push
 from capture import headers as local_headers, cookies as local_cookies, data
+import logging
 
 # 常量和配置项
 KEY = "3c5c8717f3daf09iop3423zafeqoi"
@@ -25,6 +26,9 @@ env_method = os.getenv('PUSH_METHOD')
 headers = json.loads(json.dumps(eval(env_headers))) if env_headers else local_headers
 cookies = json.loads(json.dumps(eval(env_cookies))) if env_cookies else local_cookies
 number = int(env_num) if env_num not in (None, '') else DEFAULT_READ_NUM
+
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger(__name__)
 
 def encode_data(data):
     return '&'.join(f"{k}={urllib.parse.quote(str(data[k]), safe='')}" for k in sorted(data.keys()))
@@ -50,7 +54,7 @@ def get_wr_skey():
             if "wr_skey" in cookie:
                 return cookie.split('=')[-1][:8]
     except requests.RequestException as e:
-        print(f"⚠ 请求失败: {e}")
+        log.warning(f"⚠ 请求失败: {e}")
     return None
 
 def read_book(index):
@@ -60,25 +64,25 @@ def read_book(index):
     data['sg'] = hashlib.sha256(f"{data['ts']}{data['rn']}{KEY}".encode()).hexdigest()
     data['s'] = cal_hash(encode_data(data))
 
-    print(f"\n尝试第 {index} 次阅读...")
+    log.info(f"\n尝试第 {index} 次阅读...")
     try:
         response = requests.post(READ_URL, headers=headers, cookies=cookies, data=json.dumps(data, separators=(',', ':')))
         resData = response.json()
-        print(resData)
+        log.info(resData)
 
         if 'succ' in resData:
             return True
         else:
-            print("❌ cookie 已过期，尝试刷新...")
+            log.error("❌ cookie 已过期，尝试刷新...")
             new_skey = get_wr_skey()
             if new_skey:
                 cookies['wr_skey'] = new_skey
-                print(f"✅ 密钥刷新成功，新密钥：{new_skey}\n🔄 重新本次阅读。")
+                log.info(f"✅ 密钥刷新成功，新密钥：{new_skey}\n🔄 重新本次阅读。")
             else:
-                print("⚠ 无法获取新密钥，终止运行。")
+                log.warning("⚠ 无法获取新密钥，终止运行。")
                 return False
     except requests.RequestException as e:
-        print(f"⚠ 请求失败: {e}")
+        log.warning(f"⚠ 请求失败: {e}")
     finally:
         data.pop('s')
     return False
@@ -88,10 +92,10 @@ while index <= number:
     if read_book(index):
         index += 1
         time.sleep(SLEEP_INTERVAL)
-        print(f"✅ 阅读成功，阅读进度：{index * 0.5} 分钟")
+        log.info(f"✅ 阅读成功，阅读进度：{index * 0.5} 分钟")
     else:
         break
 
-print("🎉 阅读脚本已完成！")
+log.info("🎉 阅读脚本已完成！")
 if env_method not in (None, ''):
     push("阅读脚本已完成！", env_method)
