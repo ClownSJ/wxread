@@ -27,7 +27,7 @@ headers = json.loads(json.dumps(eval(env_headers))) if env_headers else local_he
 cookies = json.loads(json.dumps(eval(env_cookies))) if env_cookies else local_cookies
 number = int(env_num) if env_num not in (None, '') else DEFAULT_READ_NUM
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(Y-%m-%d %H:%M:%S) - %(name)s - %(levelname)s - %(message)s')
 log = logging.getLogger('main')
 
 def encode_data(data):
