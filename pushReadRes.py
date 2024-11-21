@@ -4,7 +4,7 @@ import requests
 import logging
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('push')
 
 class PushNotification:
     def __init__(self, pushplus_token=None):

@@ -5,7 +5,7 @@ import time
 import hashlib
 import urllib.parse
 import random
-from push import push
+from pushReadRes import push
 from capture import headers as local_headers, cookies as local_cookies, data
 import logging
 
@@ -15,7 +15,7 @@ READ_URL = "https://weread.qq.com/web/book/read"
 RENEW_URL = "https://weread.qq.com/web/login/renewal"
 COOKIE_DATA = {"rq": "%2Fweb%2Fbook%2Fread"}
 DEFAULT_READ_NUM = 4
-SLEEP_INTERVAL = 30
+SLEEP_INTERVAL = 20
 
 # 从环境变量获取 headers、cookies等值(如果不存在使用默认本地值)
 env_headers = os.getenv('WXREAD_HEADERS')
@@ -28,7 +28,7 @@ cookies = json.loads(json.dumps(eval(env_cookies))) if env_cookies else local_co
 number = int(env_num) if env_num not in (None, '') else DEFAULT_READ_NUM
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-log = logging.getLogger(__name__)
+log = logging.getLogger('main')
 
 def encode_data(data):
     return '&'.join(f"{k}={urllib.parse.quote(str(data[k]), safe='')}" for k in sorted(data.keys()))
@@ -90,9 +90,10 @@ def read_book(index):
 index = 1
 while index <= number:
     if read_book(index):
+        random_sleep = SLEEP_INTERVAL + random.randint(0, 10)
+        time.sleep(random_sleep)
+        log.info(f"✅ 阅读成功，阅读进度：{index * 0.5} 分钟，休眠时间：{random_sleep} 秒")
         index += 1
-        time.sleep(SLEEP_INTERVAL)
-        log.info(f"✅ 阅读成功，阅读进度：{index * 0.5} 分钟")
     else:
         break
 
