@@ -52,19 +52,21 @@ def get_wr_skey():
                                  data=json.dumps(COOKIE_DATA, separators=(',', ':')))
         for cookie in response.headers.get('Set-Cookie', '').split(';'):
             if "wr_skey" in cookie:
-                return cookie.split('=')[-1][:8]
+                new_skey = cookie.split('=')[-1][:8]
+                cookies['wr_skey'] = new_skey  # 更新全局变量
+                return new_skey
     except requests.RequestException as e:
         log.warning(f"⚠ 请求失败: {e}")
     return None
 
-def read_book(index):
+def read_book(index, retry=False):
     data['ct'] = int(time.time())
     data['ts'] = int(time.time() * 1000)
     data['rn'] = random.randint(0, 1000)
     data['sg'] = hashlib.sha256(f"{data['ts']}{data['rn']}{KEY}".encode()).hexdigest()
     data['s'] = cal_hash(encode_data(data))
 
-    log.info(f"\n尝试第 {str(index)} 次阅读...")
+    log.info(f"\n尝试第 {index} 次阅读...")
     try:
         response = requests.post(READ_URL, headers=headers, cookies=cookies, data=json.dumps(data, separators=(',', ':')))
         resData = response.json()
@@ -73,14 +75,16 @@ def read_book(index):
         if 'succ' in resData:
             return True
         else:
-            log.error("❌ cookie 已过期，尝试刷新...")
-            new_skey = get_wr_skey()
-            if new_skey:
-                cookies['wr_skey'] = new_skey
-                log.info(f"✅ 密钥刷新成功，新密钥：{new_skey}\n🔄 重新本次阅读。")
-            else:
-                log.warning("⚠ 无法获取新密钥，终止运行。")
-                return False
+            if not retry:
+                log.error("❌ cookie 已过期，尝试刷新...")
+                new_skey = get_wr_skey()
+                if new_skey:
+                    cookies['wr_skey'] = new_skey
+                    log.info(f"✅ 密钥刷新成功，新密钥：{new_skey}\n🔄 重新本次阅读。")
+                    return read_book(index, retry=True)  # 重新本次阅读，标记为重试
+                else:
+                    log.warning("⚠ 无法获取新密钥，终止运行。")
+            return False
     except requests.RequestException as e:
         log.warning(f"⚠ 请求失败: {e}")
     finally:
@@ -91,7 +95,7 @@ while index <= number:
     if read_book(index):
         random_sleep = SLEEP_INTERVAL + random.randint(0, 5)
         time.sleep(random_sleep)
-        log.info(f"✅ 阅读成功，阅读进度：{str(index * 0.5)} 分钟，休眠时间：{str(random_sleep)} 秒")
+        log.info(f"✅ 阅读成功，阅读进度：{index * 0.5} 分钟，休眠时间：{random_sleep} 秒")
         index += 1
     else:
         break
