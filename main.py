@@ -55,12 +55,14 @@ def main():
 
     index = 1
     failTimes = 0
+    readTime = 0
     while index <= number:
         if read_book(index, headers, cookies, log):
             random_sleep = SLEEP_INTERVAL + random.randint(0, 5)
             time.sleep(random_sleep)
-            log.info(f"阅读成功，阅读进度：{index * 0.5} 分钟，阅读时间：{random_sleep} 秒")
+            log.info(f"阅读成功，阅读时间：{random_sleep} 秒")
             index += 1
+            readTime += random_sleep
         elif failTimes < 3:
             failTimes += 1
             continue
@@ -68,9 +70,9 @@ def main():
             log.error("连续三次阅读失败，程序退出。")
             break
 
-    log.info(f"阅读完成，此次共阅读已超过 {(index - 1) * 0.5} 分钟")
+    log.info(f"阅读完成，此次共阅读 {readTime} 秒")
     if env_method := get_env_variable('PUSH_METHOD', None):
-        push(f"阅读完成，此次共阅读已超过 {(index - 1) * 0.5} 分钟", env_method)
+        push(f"阅读完成，此次共阅读 {readTime} 秒", env_method)
 
 def read_book(index, headers, cookies, log, retry=False):
     data['ct'] = int(time.time())

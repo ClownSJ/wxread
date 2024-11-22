@@ -12,7 +12,7 @@ class PushNotification:
         self.headers = {
             'User-Agent': 'Apifox/1.0.0 (https://apifox.com)'
         }
-        self.pushplus_token = pushplus_token or os.getenv("PUSHPLUS_TOKEN", "YOUR_PUSHPLUS_TOKEN")
+        self.pushplus_token = pushplus_token or os.getenv("PUSHPLUS_TOKEN", None)
 
     def push_pushplus(self, content):
         params = {
