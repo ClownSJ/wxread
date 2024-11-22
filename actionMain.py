@@ -42,7 +42,10 @@ def get_env_variable(var_name, default_value):
 def load_json_data(env_data):
     if not env_data:
         raise ValueError("环境变量未设置或为空")
-    return json.loads(env_data)
+    try:
+        return json.loads(env_data)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"环境变量中的 JSON 数据格式错误: {e}")
 
 def initialize():
     headers = load_json_data(get_env_variable('WXREAD_HEADERS', None))
