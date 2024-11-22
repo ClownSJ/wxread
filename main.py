@@ -54,18 +54,23 @@ def main():
     log = setup_logging()
 
     index = 1
+    failTimes = 0
     while index <= number:
         if read_book(index, headers, cookies, log):
             random_sleep = SLEEP_INTERVAL + random.randint(0, 5)
             time.sleep(random_sleep)
-            log.info(f"✅ 阅读成功，阅读进度：{index * 0.5} 分钟，阅读时间：{random_sleep} 秒")
+            log.info(f"阅读成功，阅读进度：{index * 0.5} 分钟，阅读时间：{random_sleep} 秒")
             index += 1
+        elif failTimes < 3:
+            failTimes += 1
+            continue
         else:
+            log.error("连续三次阅读失败，程序退出。")
             break
 
-    log.info(f"🎉 阅读完成，此次共阅读已超过 {number * 0.5} 分钟")
+    log.info(f"阅读完成，此次共阅读已超过 {(index - 1) * 0.5} 分钟")
     if env_method := get_env_variable('PUSH_METHOD', None):
-        push("阅读脚本已完成！", env_method)
+        push(f"阅读完成，此次共阅读已超过 {(index - 1) * 0.5} 分钟", env_method)
 
 def read_book(index, headers, cookies, log, retry=False):
     data['ct'] = int(time.time())
@@ -74,27 +79,27 @@ def read_book(index, headers, cookies, log, retry=False):
     data['sg'] = hashlib.sha256(f"{data['ts']}{data['rn']}{KEY}".encode()).hexdigest()
     data['s'] = cal_hash(encode_data(data))
 
-    log.info(f"\n尝试第 {index} 次阅读...")
+    log.info(f"尝试第 {index} 次阅读...")
     try:
         response = requests.post(READ_URL, headers=headers, cookies=cookies, data=json.dumps(data, separators=(',', ':')))
         resData = response.json()
         log.info(resData)
 
         if 'succ' in resData:
-            log.info(f"\n正在进行第 {index} 次阅读...")
+            log.info(f"正在进行第 {index} 次阅读...")
             return True
         else:
             if not retry:
-                log.error("❌ cookie 已过期，尝试刷新...")
+                log.error("cookie 已过期，尝试刷新...")
                 new_skey = get_wr_skey(headers, cookies, log)
                 if new_skey:
-                    log.info(f"✅ 密钥刷新成功，新密钥：{new_skey}\n🔄 重新本次阅读。")
-                    return read_book(index, headers, cookies, log, retry=True)  # 重新本次阅读，标记为重试
+                    cookies['wr_skey'] = new_skey  
+                    log.info(f"密钥刷新成功，新密钥：{new_skey}, 重新本次阅读。")
                 else:
-                    log.warning("⚠ 无法获取新密钥，终止运行。")
+                    log.warning("无法获取新密钥，终止运行。")
             return False
     except requests.RequestException as e:
-        log.warning(f"⚠ 请求失败: {e}")
+        log.warning(f"请求失败: {e}")
     finally:
         data.pop('s', None)  # 避免 KeyError
 
@@ -104,7 +109,6 @@ def get_wr_skey(headers, cookies, log):
         for cookie in response.headers.get('Set-Cookie', '').split(';'):
             if "wr_skey" in cookie:
                 new_skey = cookie.split('=')[-1][:8]
-                cookies['wr_skey'] = new_skey  # 更新全局变量
                 return new_skey
     except requests.RequestException as e:
         log.warning(f"⚠ 请求失败: {e}")

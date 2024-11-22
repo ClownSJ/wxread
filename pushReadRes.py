@@ -15,9 +15,6 @@ class PushNotification:
         self.pushplus_token = pushplus_token or os.getenv("PUSHPLUS_TOKEN", "YOUR_PUSHPLUS_TOKEN")
 
     def push_pushplus(self, content):
-        """
-        Send notification via PushPlus
-        """
         params = {
             "token": self.pushplus_token,
             "content": content
@@ -32,9 +29,6 @@ class PushNotification:
             return False
 
 def push(content, method, pushplus_token=None):
-    """
-    统一推送接口
-    """
     if method != "pushplus":
         raise ValueError("无效的通知渠道. 请选择 'pushplus'")
     
