@@ -18,11 +18,11 @@ class PushNotification:
         """
         Send notification via PushPlus
         """
+        params = {
+            "token": self.pushplus_token,
+            "content": content
+        }
         try:
-            params = {
-                "token": self.pushplus_token,
-                "content": content
-            }
             response = requests.get(self.pushplus_url, headers=self.headers, params=params)
             response.raise_for_status()
             logger.info("PushPlus Response: %s", response.text)

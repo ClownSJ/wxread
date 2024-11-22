@@ -17,19 +17,6 @@ COOKIE_DATA = {"rq": "%2Fweb%2Fbook%2Fread"}
 DEFAULT_READ_NUM = 4
 SLEEP_INTERVAL = 30
 
-# 从环境变量获取 headers、cookies等值(如果不存在使用默认本地值)
-env_headers = os.getenv('WXREAD_HEADERS')
-env_cookies = os.getenv('WXREAD_COOKIES')
-env_num = os.getenv('READ_NUM')
-env_method = os.getenv('PUSH_METHOD')
-
-headers = json.loads(json.dumps(eval(env_headers))) if env_headers else local_headers
-cookies = json.loads(json.dumps(eval(env_cookies))) if env_cookies else local_cookies
-number = int(env_num) if env_num not in (None, '') else DEFAULT_READ_NUM
-
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
-log = logging.getLogger('main')
-
 def encode_data(data):
     return '&'.join(f"{k}={urllib.parse.quote(str(data[k]), safe='')}" for k in sorted(data.keys()))
 
@@ -46,20 +33,41 @@ def cal_hash(input_string):
 
     return hex(_7032f5 + _cc1055)[2:].lower()
 
-def get_wr_skey():
-    try:
-        response = requests.post(RENEW_URL, headers=headers, cookies=cookies,
-                                 data=json.dumps(COOKIE_DATA, separators=(',', ':')))
-        for cookie in response.headers.get('Set-Cookie', '').split(';'):
-            if "wr_skey" in cookie:
-                new_skey = cookie.split('=')[-1][:8]
-                cookies['wr_skey'] = new_skey  # 更新全局变量
-                return new_skey
-    except requests.RequestException as e:
-        log.warning(f"⚠ 请求失败: {e}")
-    return None
+def setup_logging():
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levellevel)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+    return logging.getLogger('main')
 
-def read_book(index, retry=False):
+def get_env_variable(var_name, default_value):
+    return os.getenv(var_name, default_value)
+
+def load_json_data(env_data, local_data):
+    return json.loads(json.dumps(eval(env_data))) if env_data else local_data
+
+def initialize():
+    headers = load_json_data(get_env_variable('WXREAD_HEADERS', None), local_headers)
+    cookies = load_json_data(get_env_variable('WXREAD_COOKIES', None), local_cookies)
+    number = int(get_env_variable('READ_NUM', DEFAULT_READ_NUM))
+    return headers, cookies, number
+
+def main():
+    headers, cookies, number = initialize()
+    log = setup_logging()
+
+    index = 1
+    while index <= number:
+        if read_book(index, headers, cookies, log):
+            random_sleep = SLEEP_INTERVAL + random.randint(0, 5)
+            time.sleep(random_sleep)
+            log.info(f"✅ 阅读成功，阅读进度：{index * 0.5} 分钟，阅读时间：{random_sleep} 秒")
+            index += 1
+        else:
+            break
+
+    log.info(f"🎉 阅读完成，此次共阅读已超过 {number * 0.5} 分钟")
+    if env_method := get_env_variable('PUSH_METHOD', None):
+        push("阅读脚本已完成！", env_method)
+
+def read_book(index, headers, cookies, log, retry=False):
     data['ct'] = int(time.time())
     data['ts'] = int(time.time() * 1000)
     data['rn'] = random.randint(0, 1000)
@@ -73,15 +81,15 @@ def read_book(index, retry=False):
         log.info(resData)
 
         if 'succ' in resData:
+            log.info(f"\n正在进行第 {index} 次阅读...")
             return True
         else:
             if not retry:
                 log.error("❌ cookie 已过期，尝试刷新...")
-                new_skey = get_wr_skey()
+                new_skey = get_wr_skey(headers, cookies, log)
                 if new_skey:
-                    cookies['wr_skey'] = new_skey
                     log.info(f"✅ 密钥刷新成功，新密钥：{new_skey}\n🔄 重新本次阅读。")
-                    return read_book(index, retry=True)  # 重新本次阅读，标记为重试
+                    return read_book(index, headers, cookies, log, retry=True)  # 重新本次阅读，标记为重试
                 else:
                     log.warning("⚠ 无法获取新密钥，终止运行。")
             return False
@@ -90,16 +98,17 @@ def read_book(index, retry=False):
     finally:
         data.pop('s', None)  # 避免 KeyError
 
-index = 1
-while index <= number:
-    if read_book(index):
-        random_sleep = SLEEP_INTERVAL + random.randint(0, 5)
-        time.sleep(random_sleep)
-        log.info(f"✅ 阅读成功，阅读进度：{index * 0.5} 分钟，休眠时间：{random_sleep} 秒")
-        index += 1
-    else:
-        break
+def get_wr_skey(headers, cookies, log):
+    try:
+        response = requests.post(RENEW_URL, headers=headers, cookies=cookies, data=json.dumps(COOKIE_DATA, separators=(',', ':')))
+        for cookie in response.headers.get('Set-Cookie', '').split(';'):
+            if "wr_skey" in cookie:
+                new_skey = cookie.split('=')[-1][:8]
+                cookies['wr_skey'] = new_skey  # 更新全局变量
+                return new_skey
+    except requests.RequestException as e:
+        log.warning(f"⚠ 请求失败: {e}")
+    return None
 
-log.info("🎉 阅读脚本已完成！")
-if env_method not in (None, ''):
-    push("阅读脚本已完成！", env_method)
+if __name__ == "__main__":
+    main()
