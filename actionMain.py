@@ -6,7 +6,6 @@ import hashlib
 import urllib.parse
 import random
 from pushReadRes import push
-from capture import headers as local_headers, cookies as local_cookies, data
 import logging
 
 # 常量和配置项
@@ -34,30 +33,33 @@ def cal_hash(input_string):
     return hex(_7032f5 + _cc1055)[2:].lower()
 
 def setup_logging():
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levellevel)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
     return logging.getLogger('main')
 
 def get_env_variable(var_name, default_value):
     return os.getenv(var_name, default_value)
 
-def load_json_data(env_data, local_data):
-    return json.loads(json.dumps(eval(env_data))) if env_data else local_data
+def load_json_data(env_data):
+    if not env_data:
+        raise ValueError("环境变量未设置或为空")
+    return json.loads(env_data)
 
 def initialize():
-    headers = load_json_data(get_env_variable('WXREAD_HEADERS', None), local_headers)
-    cookies = load_json_data(get_env_variable('WXREAD_COOKIES', None), local_cookies)
+    headers = load_json_data(get_env_variable('WXREAD_HEADERS', None))
+    cookies = load_json_data(get_env_variable('WXREAD_COOKIES', None))
+    data = load_json_data(get_env_variable('WXREAD_DATA', None))
     number = int(get_env_variable('READ_NUM', DEFAULT_READ_NUM))
-    return headers, cookies, number
+    return headers, cookies, data, number
 
 def main():
-    headers, cookies, number = initialize()
+    headers, cookies, data, number = initialize()
     log = setup_logging()
 
     index = 1
     failTimes = 0
     readTime = 0
     while index <= number:
-        if read_book(index, headers, cookies, log):
+        if read_book(index, headers, cookies, data, log):
             random_sleep = SLEEP_INTERVAL + random.randint(0, 5)
             time.sleep(random_sleep)
             log.info(f"阅读成功，阅读时间：{random_sleep} 秒")
@@ -74,7 +76,7 @@ def main():
     if env_method := get_env_variable('PUSH_METHOD', None):
         push(f"阅读完成，此次共阅读 {readTime} 秒", env_method)
 
-def read_book(index, headers, cookies, log, retry=False):
+def read_book(index, headers, cookies, data, log, retry=False):
     data['ct'] = int(time.time())
     data['ts'] = int(time.time() * 1000)
     data['rn'] = random.randint(0, 1000)
