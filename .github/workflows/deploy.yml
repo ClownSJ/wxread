@@ -30,7 +30,5 @@ jobs:
         READ_NUM: ${{ vars.READ_NUM }}  # 使用 Repository Variables避免日志被屏蔽
         PUSH_METHOD: ${{ secrets.PUSH_METHOD }}
         PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
-        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       run: |
-        python action.py
+        python actionMain.py
