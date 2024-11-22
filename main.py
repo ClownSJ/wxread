@@ -78,7 +78,6 @@ def read_book(index):
             if new_skey:
                 cookies['wr_skey'] = new_skey
                 log.info(f"✅ 密钥刷新成功，新密钥：{new_skey}\n🔄 重新本次阅读。")
-                return read_book(index)
             else:
                 log.warning("⚠ 无法获取新密钥，终止运行。")
                 return False
@@ -86,7 +85,6 @@ def read_book(index):
         log.warning(f"⚠ 请求失败: {e}")
     finally:
         data.pop('s')
-    return False
 
 index = 1
 while index <= number:
