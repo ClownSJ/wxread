@@ -88,7 +88,7 @@ def read_book(index, retry=False):
     except requests.RequestException as e:
         log.warning(f"⚠ 请求失败: {e}")
     finally:
-        data.pop('s')
+        data.pop('s', None)  # 避免 KeyError
 
 index = 1
 while index <= number:
